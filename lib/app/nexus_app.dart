@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:flutter_android_app/app/home_page.dart';
+import 'package:flutter_android_app/app/nexus_gate.dart';
 import 'package:flutter_android_app/core/theme/indigo_or_chart.dart';
 
 /// Application NEXUS.
@@ -13,7 +13,7 @@ class NexusApp extends StatelessWidget {
     return MaterialApp(
       title: 'NEXUS',
       theme: IndigoOrChart.theme,
-      home: const HomePage(),
+      home: const NexusGate(),
     );
   }
 }
