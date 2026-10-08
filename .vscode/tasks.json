@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Flutter app on Android emulator",
+			"type": "shell",
+			"command": "E:\\flutter\\bin\\flutter.bat",
+			"args": [
+				"run",
+				"--device-id",
+				"emulator-5554"
+			],
+			"isBackground": true,
+			"problemMatcher": [
+				"$dart-flutter"
+			]
+		}
+	]
+}
