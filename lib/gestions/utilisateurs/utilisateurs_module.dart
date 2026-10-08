@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_android_app/core/gestion_module.dart';
-import 'package:flutter_android_app/gestions/utilisateurs/back/utilisateurs_api.dart';
+import 'package:flutter_android_app/gestions/utilisateurs/back/utilisateurs_store.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/front/utilisateurs_page.dart';
 
-const _back = UtilisateursApi();
+/// Back partagé des comptes, utilisé par la connexion et la barre latérale.
+final utilisateursStore = UtilisateursStore();
 
 /// Gestion des comptes, profils, rôles et de la sécurité.
 final utilisateursModule = GestionModule(
@@ -12,6 +13,6 @@ final utilisateursModule = GestionModule(
   title: UtilisateursPage.title,
   icon: Icons.person_outline,
   responsibilities: UtilisateursPage.responsibilities,
-  front: (context) => const UtilisateursPage(back: _back),
-  back: _back,
+  front: (context) => UtilisateursPage(store: utilisateursStore),
+  back: utilisateursStore,
 );

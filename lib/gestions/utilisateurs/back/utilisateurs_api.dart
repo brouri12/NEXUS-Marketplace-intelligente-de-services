@@ -1,5 +1,1 @@
-/// Contrat back des comptes, profils, rôles et de la sécurité.
-class UtilisateursApi {
-  /// Crée le point d'entrée back, sans logique pour l'instant.
-  const UtilisateursApi();
-}
+export 'package:flutter_android_app/gestions/utilisateurs/back/utilisateurs_store.dart';

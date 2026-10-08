@@ -1,5 +1,1 @@
-/// Contrat back des devis, commandes, prestations et statuts.
-class DevisContratsApi {
-  /// Crée le point d'entrée back, sans logique pour l'instant.
-  const DevisContratsApi();
-}
+export 'package:flutter_android_app/gestions/devis_contrats/back/devis_contrats_store.dart';
