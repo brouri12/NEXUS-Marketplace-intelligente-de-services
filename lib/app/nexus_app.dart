@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:flutter_android_app/app/home_page.dart';
 import 'package:flutter_android_app/core/theme/indigo_or_chart.dart';
+import 'package:flutter_android_app/gestions/communication_reclamation/communication_reclamation_module.dart';
 
 /// Application NEXUS.
 class NexusApp extends StatelessWidget {
@@ -13,7 +13,7 @@ class NexusApp extends StatelessWidget {
     return MaterialApp(
       title: 'NEXUS',
       theme: IndigoOrChart.theme,
-      home: const HomePage(),
+      home: Builder(builder: communicationReclamationModule.front),
     );
   }
 }
