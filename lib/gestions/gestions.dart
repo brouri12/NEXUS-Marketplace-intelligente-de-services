@@ -4,6 +4,7 @@ import 'package:flutter_android_app/gestions/devis_contrats/devis_contrats_modul
 import 'package:flutter_android_app/gestions/marketplace/marketplace_module.dart';
 import 'package:flutter_android_app/gestions/services_prestataires/services_prestataires_module.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/utilisateurs_module.dart';
+import 'package:flutter_android_app/gestions/logistique/logistique_module.dart';
 
 /// Les cinq gestions de NEXUS, dans l'ordre du produit.
 final List<GestionModule> gestions = [
@@ -12,4 +13,5 @@ final List<GestionModule> gestions = [
   marketplaceModule,
   devisContratsModule,
   communicationReclamationModule,
+  logistiqueModule,
 ];
