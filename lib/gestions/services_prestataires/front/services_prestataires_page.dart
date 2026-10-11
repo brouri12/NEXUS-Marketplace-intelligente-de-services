@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
-import 'package:flutter_android_app/core/gestion_front_page.dart';
 import 'package:flutter_android_app/gestions/services_prestataires/back/services_prestataires_api.dart';
+import 'package:flutter_android_app/gestions/services_prestataires/front/etat.dart';
+import 'package:flutter_android_app/gestions/services_prestataires/front/tableau_de_bord_page.dart';
 
-/// Écran réservé de la gestion services et prestataires.
-class ServicesPrestatairesPage extends StatelessWidget {
+/// Entrée prestataire.
+///
+/// Activer le rôle Prestataire, depuis Utilisateurs, ouvre cette page.
+class ServicesPrestatairesPage extends StatefulWidget {
   /// Relie cet écran à [back].
   const ServicesPrestatairesPage({super.key, required this.back});
 
@@ -23,11 +26,27 @@ class ServicesPrestatairesPage extends StatelessWidget {
   ];
 
   @override
+  State<ServicesPrestatairesPage> createState() =>
+      _ServicesPrestatairesPageState();
+}
+
+class _ServicesPrestatairesPageState extends State<ServicesPrestatairesPage> {
+  late final ServicesPrestatairesEtat _etat;
+
+  @override
+  void initState() {
+    super.initState();
+    _etat = ServicesPrestatairesEtat(widget.back);
+  }
+
+  @override
+  void dispose() {
+    _etat.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GestionFrontPage(
-      title: title,
-      responsibilities: responsibilities,
-      back: back,
-    );
+    return TableauDeBordPage(etat: _etat);
   }
 }
