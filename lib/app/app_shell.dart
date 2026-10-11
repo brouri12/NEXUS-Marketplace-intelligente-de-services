@@ -6,6 +6,7 @@ import 'package:flutter_android_app/gestions/utilisateurs/back/user_account.dart
 import 'package:flutter_android_app/core/theme/indigo_or_chart.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/communication_reclamation_module.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/devis_contrats_module.dart';
+import 'package:flutter_android_app/gestions/logistique/logistique_module.dart';
 import 'package:flutter_android_app/gestions/marketplace/marketplace_module.dart';
 import 'package:flutter_android_app/gestions/services_prestataires/services_prestataires_module.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/back/utilisateurs_store.dart';
@@ -99,6 +100,7 @@ class _AppShellState extends State<AppShell> {
       ShellRoutes.marketplace => marketplaceModule.front(context),
       ShellRoutes.services => servicesPrestatairesModule.front(context),
       ShellRoutes.devis => devisContratsModule.front(context),
+      ShellRoutes.logistique => logistiqueModule.front(context),
       ShellRoutes.communication => communicationReclamationModule.front(context),
       _ => null,
     };

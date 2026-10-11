@@ -80,6 +80,11 @@ const gestionEntries = [
     icon: Icons.request_quote_outlined,
   ),
   SideEntry(
+    route: ShellRoutes.logistique,
+    label: 'Logistique',
+    icon: Icons.local_shipping_outlined,
+  ),
+  SideEntry(
     route: ShellRoutes.communication,
     label: 'Messages',
     icon: Icons.forum_outlined,
@@ -96,6 +101,9 @@ abstract final class ShellRoutes {
 
   /// Devis et contrats.
   static const devis = '/shell/devis';
+
+  /// Trajets et suivi des arrivées.
+  static const logistique = '/shell/logistique';
 
   /// Communication et réclamation.
   static const communication = '/shell/communication';

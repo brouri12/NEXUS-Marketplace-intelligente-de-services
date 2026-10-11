@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:flutter_android_app/core/db/nexus_database.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/back/provider_profile.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/back/user_account.dart';
+import 'package:flutter_android_app/gestions/utilisateurs/back/utilisateurs_table.dart';
 
 /// Résultat d'une tentative de connexion.
 enum SignInStatus {
@@ -71,6 +73,60 @@ class UtilisateursStore extends ChangeNotifier {
         roles: {UserRole.admin, UserRole.client},
         createdAt: now,
       ),
+      UserAccount(
+        id: 'u-batiment',
+        firstName: 'Sami',
+        lastName: 'Jaziri',
+        email: 'sami@nexus.app',
+        phone: '22333444',
+        city: 'Tunis',
+        password: demoPassword,
+        roles: {UserRole.provider, UserRole.client},
+        createdAt: now,
+        providerProfile: const ProviderProfile(
+          service: 'Plomberie',
+          skills: ['Fuite', 'Installation', 'Débouchage'],
+          hourlyRate: 55,
+          availability: ['Lundi', 'Mardi', 'Mercredi'],
+          presentation: 'Plomberie, peinture et menuiserie à Tunis.',
+        ),
+      ),
+      UserAccount(
+        id: 'u-maison',
+        firstName: 'Leila',
+        lastName: 'Karoui',
+        email: 'leila@nexus.app',
+        phone: '22555666',
+        city: 'Ariana',
+        password: demoPassword,
+        roles: {UserRole.provider, UserRole.client},
+        createdAt: now,
+        providerProfile: const ProviderProfile(
+          service: 'Ménage',
+          skills: ['Maison', 'Bureau', 'Vitres'],
+          hourlyRate: 25,
+          availability: ['Jeudi', 'Vendredi', 'Samedi'],
+          presentation: 'Entretien de la maison et du jardin.',
+        ),
+      ),
+      UserAccount(
+        id: 'u-electricite',
+        firstName: 'Hatem',
+        lastName: 'Ben Youssef',
+        email: 'hatem@nexus.app',
+        phone: '22777888',
+        city: 'Ariana',
+        password: demoPassword,
+        roles: {UserRole.provider, UserRole.client},
+        createdAt: now,
+        providerProfile: const ProviderProfile(
+          service: 'Électricité',
+          skills: ['Dépannage', 'Installation', 'Tableau'],
+          hourlyRate: 50,
+          availability: ['Lundi', 'Vendredi'],
+          presentation: 'Dépannage et installation électrique.',
+        ),
+      ),
     ];
     _sessions['u-admin'] = [
       DeviceSession(
@@ -106,6 +162,18 @@ class UtilisateursStore extends ChangeNotifier {
 
   /// Whether the admin is looking at the client interface.
   bool get clientInterface => _clientInterface;
+
+  /// Recharge les comptes enregistrés dans SQLite.
+  Future<void> charger() async {
+    final lignes = await nexusDb.charger(
+      tableUtilisateurs,
+      _users.map(ligneUtilisateur),
+    );
+    if (lignes == null) return;
+    _users = lignes.map(utilisateurDepuis).toList();
+    _nextUser = prochainNumero(_users.map((user) => user.id), 'u-', _nextUser);
+    notifyListeners();
+  }
 
   /// Ouvre la barre du bas du client, sans quitter le compte admin.
   void openClientInterface() {
@@ -256,6 +324,7 @@ class UtilisateursStore extends ChangeNotifier {
       providerProfile: profile,
     );
     _users = [..._users, user];
+    nexusDb.enregistrer(tableUtilisateurs, ligneUtilisateur(user));
     if (!provider) {
       _currentId = user.id;
       _sessions[user.id] = [
@@ -581,6 +650,27 @@ class UtilisateursStore extends ChangeNotifier {
     return null;
   }
 
+  /// Supprime définitivement un autre compte.
+  ///
+  /// [dossiersOuverts] vaut vrai quand un devis ou un contrat le retient encore.
+  String? deleteAccount(String id, {bool dossiersOuverts = false}) {
+    final actor = current;
+    if (actor == null || !actor.hasRole(UserRole.admin)) {
+      return 'Seul un admin peut supprimer un compte.';
+    }
+    if (id == actor.id) return 'Vous ne pouvez pas supprimer votre propre compte.';
+    final user = find(id);
+    if (user == null) return 'Compte introuvable.';
+    if (user.hasActiveContract || dossiersOuverts) {
+      return 'Ce compte a encore un contrat en cours. Suspendez-le plutôt.';
+    }
+    _users = [for (final item in _users) if (item.id != id) item];
+    _sessions.remove(id);
+    nexusDb.supprimer(tableUtilisateurs, id);
+    notifyListeners();
+    return null;
+  }
+
   UserAccount? _byEmail(String email) {
     final clean = email.trim().toLowerCase();
     for (final user in _users) {
@@ -593,5 +683,6 @@ class UtilisateursStore extends ChangeNotifier {
     _users = [
       for (final user in _users) user.id == next.id ? next : user,
     ];
+    nexusDb.enregistrer(tableUtilisateurs, ligneUtilisateur(next));
   }
 }

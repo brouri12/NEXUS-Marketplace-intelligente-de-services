@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 
-import 'package:flutter_android_app/core/gestion_front_page.dart';
-import 'package:flutter_android_app/gestions/services_prestataires/back/offered_service.dart';
-import 'package:flutter_android_app/gestions/services_prestataires/back/services_prestataires_api.dart';
+import 'package:flutter_android_app/gestions/services_prestataires/front/approbation_services_page.dart';
 import 'package:flutter_android_app/gestions/services_prestataires/front/available_services_page.dart';
+import 'package:flutter_android_app/gestions/services_prestataires/front/composants.dart';
+import 'package:flutter_android_app/gestions/services_prestataires/front/etat.dart';
+import 'package:flutter_android_app/gestions/services_prestataires/front/tableau_de_bord_page.dart';
+import 'package:flutter_android_app/gestions/services_prestataires/front/tous_les_services_page.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/back/user_account.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/utilisateurs_module.dart';
 
-/// Écran réservé de la gestion services et prestataires.
+/// Entrée de la gestion services : catalogue, tableau de bord ou supervision.
 class ServicesPrestatairesPage extends StatelessWidget {
-  /// Relie cet écran à [back].
-  const ServicesPrestatairesPage({super.key, required this.back});
+  /// Relie cet écran à [etat].
+  const ServicesPrestatairesPage({super.key, required this.etat});
 
-  /// Contrat back des services, compétences, tarifs et disponibilités.
-  final ServicesPrestatairesApi back;
+  /// Offres, compétences, tarifs et disponibilités.
+  final ServicesPrestatairesEtat etat;
 
   /// Nom affiché dans le menu.
   static const title = 'Services & prestataires';
@@ -28,42 +30,71 @@ class ServicesPrestatairesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = utilisateursStore.current;
-    final asClient = user != null &&
-        (utilisateursStore.clientInterface ||
-            (user.hasRole(UserRole.client) && !user.hasRole(UserRole.admin)));
-    if (asClient) {
-      return AvailableServicesPage(
-        services: _visibleServices(back),
-        ownOffer: user.providerProfile,
-      );
-    }
-
-    return GestionFrontPage(
-      title: title,
-      responsibilities: responsibilities,
-      back: back,
+    return ListenableBuilder(
+      listenable: utilisateursStore,
+      builder: (context, _) {
+        final user = utilisateursStore.current;
+        if (user == null) return const SizedBox.shrink();
+        if (etat.adminView) return _AdminServicesPage(etat: etat);
+        final catalogue = AvailableServicesPage(etat: etat);
+        if (!utilisateursStore.clientInterface && user.hasRole(UserRole.provider)) {
+          return TableauDeBordPage(
+            etat: etat,
+            catalogue: user.hasRole(UserRole.client) ? catalogue : null,
+          );
+        }
+        return catalogue;
+      },
     );
   }
 }
 
-List<OfferedService> _visibleServices(ServicesPrestatairesApi back) {
-  final fromAccounts = [
-    for (final account in utilisateursStore.accounts)
-      if (account.providerProfile != null && account.confirmed)
-        OfferedService(
-          id: 'account-${account.id}',
-          title: account.providerProfile!.service,
-          providerName: account.fullName,
-          city: account.city,
-          rate: account.providerProfile!.rateLabel,
-          icon: OfferedService.iconFor(account.providerProfile!.service),
-        ),
-  ];
-  final names = {for (final service in fromAccounts) service.providerName};
-  return [
-    ...fromAccounts,
-    for (final service in back.available)
-      if (!names.contains(service.providerName)) service,
-  ];
+class _AdminServicesPage extends StatelessWidget {
+  const _AdminServicesPage({required this.etat});
+
+  final ServicesPrestatairesEtat etat;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: etat,
+      builder: (context, _) {
+        final enAttente = etat.demandesEnAttente.length + etat.competencesAValider.length;
+        return Scaffold(
+          appBar: AppBar(title: const Text('Services & prestataires')),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            children: [
+              const Legende(
+                'Approuvez les offres, validez les compétences libres et réaffectez un service.',
+              ),
+              const SizedBox(height: 16),
+              TuileResume(
+                icone: Icons.verified_outlined,
+                valeur: '$enAttente à traiter',
+                legende: 'Approbation',
+                onTap: () => _ouvrir(context, ApprobationServicesPage(etat: etat)),
+              ),
+              TuileResume(
+                icone: Icons.list_alt_outlined,
+                valeur: '${etat.services.length} services',
+                legende: '${etat.prestataires.length} prestataires actifs',
+                onTap: () => _ouvrir(context, TousLesServicesPage(etat: etat)),
+              ),
+              TuileResume(
+                icone: Icons.storefront_outlined,
+                valeur: '${etat.offresVisibles.length} visibles',
+                legende: 'Catalogue client',
+                onTap: () => _ouvrir(context, AvailableServicesPage(etat: etat)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _ouvrir(BuildContext context, Widget page) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (context) => page));
+  }
 }

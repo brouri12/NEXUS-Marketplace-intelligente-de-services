@@ -75,6 +75,25 @@ class DetailDevisAdminPage extends StatelessWidget {
                   label: const Text('Voir les échanges'),
                 ),
               ],
+              if (devis.contratId == null &&
+                  !devis.ouvrable &&
+                  devis.statut != StatutDevis.accepte) ...[
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () {
+                    final error = store.supprimerDevis(devis.id);
+                    if (error != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(error)),
+                      );
+                      return;
+                    }
+                    Navigator.of(context).maybePop();
+                  },
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Supprimer ce devis'),
+                ),
+              ],
             ],
           ),
         );

@@ -9,6 +9,7 @@ import 'package:flutter_android_app/gestions/devis_contrats/front/devis_contrats
 import 'package:flutter_android_app/gestions/devis_contrats/front/devis_contrats_routes.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/front/devis_presentation.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/front/zone_signature.dart';
+import 'package:flutter_android_app/gestions/logistique/front/trajet_du_contrat.dart';
 
 /// Détail d'un contrat pour le client, avec sa signature.
 class DetailContratClientPage extends StatefulWidget {
@@ -107,6 +108,7 @@ class _DetailContratClientPageState extends State<DetailContratClientPage> {
                 icon: const Icon(Icons.forum_outlined),
                 label: const Text('Discuter'),
               ),
+              TrajetDuContrat(contrat: contrat),
               if (communicationStore.peutEvaluer(contrat.id)) ...[
                 const SizedBox(height: 8),
                 FilledButton.icon(

@@ -23,6 +23,11 @@ const clientInterfaceEntries = [
     icon: Icons.request_quote_outlined,
   ),
   SideEntry(
+    route: ShellRoutes.logistique,
+    label: 'Suivi',
+    icon: Icons.local_shipping_outlined,
+  ),
+  SideEntry(
     route: ShellRoutes.communication,
     label: 'Messages',
     icon: Icons.forum_outlined,
@@ -54,6 +59,12 @@ List<SideEntry> bottomEntriesFor(UserAccount user) {
       label: 'Devis',
       icon: Icons.request_quote_outlined,
     ),
+    if (user.hasRole(UserRole.client) || user.hasRole(UserRole.provider))
+      const SideEntry(
+        route: ShellRoutes.logistique,
+        label: 'Suivi',
+        icon: Icons.local_shipping_outlined,
+      ),
     const SideEntry(
       route: ShellRoutes.communication,
       label: 'Messages',
@@ -138,7 +149,7 @@ class NexusBottomBar extends StatelessWidget {
             labelTextStyle: WidgetStateProperty.resolveWith((states) {
               final selected = states.contains(WidgetState.selected);
               return TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: selected ? IndigoOrChart.orTexte : IndigoOrChart.texteMuted,
               );
             }),
@@ -165,6 +176,7 @@ IconData _selectedIcon(IconData icon) {
     Icons.storefront_outlined => Icons.storefront,
     Icons.handyman_outlined => Icons.handyman,
     Icons.request_quote_outlined => Icons.request_quote,
+    Icons.local_shipping_outlined => Icons.local_shipping,
     Icons.forum_outlined => Icons.forum,
     Icons.person_outline => Icons.person,
     _ => icon,

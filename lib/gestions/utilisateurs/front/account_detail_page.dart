@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_android_app/core/theme/indigo_or_chart.dart';
+import 'package:flutter_android_app/core/ui/nexus_ui.dart';
+import 'package:flutter_android_app/gestions/devis_contrats/back/contrat.dart';
+import 'package:flutter_android_app/gestions/devis_contrats/devis_contrats_module.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/back/user_account.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/front/utilisateurs_frame.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/front/utilisateurs_routes.dart';
@@ -147,6 +151,13 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                   child: const Text('Suspendre'),
                 ),
               ],
+              const SizedBox(height: 24),
+              TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: IndigoOrChart.erreur),
+                onPressed: self ? null : () => _supprimer(context, account),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Supprimer le compte'),
+              ),
             ],
           ),
         );
@@ -170,6 +181,32 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
       admin: admin ?? account.hasRole(UserRole.admin),
     );
     setState(() => _error = error ?? '');
+  }
+
+  Future<void> _supprimer(BuildContext context, UserAccount account) async {
+    final store = StoreScope.of(context);
+    final navigator = Navigator.of(context);
+    final ok = await confirmerNexus(
+      context,
+      titre: 'Supprimer ce compte ?',
+      message: '${account.fullName} ne pourra plus se connecter.',
+      confirmer: 'Supprimer',
+      icone: Icons.person_off_outlined,
+      danger: true,
+    );
+    if (ok != true) return;
+    final ouverts = devisContratsStore.tousLesContrats().any(
+      (contrat) =>
+          (contrat.clientId == account.id || contrat.prestataireId == account.id) &&
+          contrat.statut != StatutContrat.termine &&
+          contrat.statut != StatutContrat.annule,
+    );
+    final error = store.deleteAccount(account.id, dossiersOuverts: ouverts);
+    if (error != null) {
+      setState(() => _error = error);
+      return;
+    }
+    if (navigator.canPop()) navigator.pop();
   }
 
   String _format(DateTime value) {

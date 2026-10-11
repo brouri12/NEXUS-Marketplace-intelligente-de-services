@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:flutter_android_app/core/db/nexus_database.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/back/contrat.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/back/demande_devis.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/back/devis.dart';
+import 'package:flutter_android_app/gestions/devis_contrats/back/devis_contrats_table.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/back/modification_contrat.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/back/option_ligne.dart';
 import 'package:flutter_android_app/gestions/utilisateurs/back/user_account.dart';
@@ -168,6 +170,32 @@ class DevisContratsStore extends ChangeNotifier {
   var _nextContrat = 3;
   var _nextModification = 1;
 
+  /// Recharge demandes, devis, contrats et propositions depuis SQLite.
+  Future<void> charger() async {
+    final demandes = await nexusDb.charger(tableDemandes, _demandes.map(ligneDemande));
+    final devis = await nexusDb.charger(tableDevis, _devis.map(ligneDevis));
+    final contrats = await nexusDb.charger(tableContrats, _contrats.map(ligneContrat));
+    final modifications = await nexusDb.charger(
+      tableModifications,
+      _modifications.map(ligneModification),
+    );
+    if (demandes != null) _demandes = demandes.map(demandeDepuis).toList();
+    if (devis != null) _devis = devis.map(devisDepuis).toList();
+    if (contrats != null) _contrats = contrats.map(contratDepuis).toList();
+    if (modifications != null) {
+      _modifications = modifications.map(modificationDepuis).toList();
+    }
+    _nextDemande = prochainNumero(_demandes.map((item) => item.id), 'dem-', _nextDemande);
+    _nextDevis = prochainNumero(_devis.map((item) => item.id), 'dv-', _nextDevis);
+    _nextContrat = prochainNumero(_contrats.map((item) => item.id), 'ct-', _nextContrat);
+    _nextModification = prochainNumero(
+      _modifications.map((item) => item.id),
+      'mod-',
+      _nextModification,
+    );
+    notifyListeners();
+  }
+
   /// Compte ouvert dans la gestion utilisateurs.
   UserAccount? get session => utilisateursStore.current;
 
@@ -231,6 +259,50 @@ class DevisContratsStore extends ChangeNotifier {
             demande.prestataireId == id && demande.statut != StatutDemande.traitee,
       ),
     );
+  }
+
+  /// Demandes envoyées par le client ouvert.
+  List<DemandeDevis> demandesClient() {
+    final id = session?.id;
+    if (id == null || !clientView) return const [];
+    return _sortedDemandes(_demandes.where((demande) => demande.clientId == id));
+  }
+
+  /// Toutes les demandes, pour l'admin.
+  List<DemandeDevis> demandesAdmin() {
+    if (!adminView) return const [];
+    return _sortedDemandes(_demandes);
+  }
+
+  /// Le client retire une demande encore sans devis.
+  String? supprimerDemande(String id) {
+    final user = session;
+    final demande = findDemande(id);
+    if (user == null) return 'Connectez-vous.';
+    if (demande == null) return 'Demande introuvable.';
+    final auteur = clientView && demande.clientId == user.id;
+    if (!auteur && !adminView) return 'Cette demande ne vous appartient pas.';
+    if (demande.statut == StatutDemande.traitee) {
+      return 'Un devis a déjà été envoyé pour cette demande.';
+    }
+    _demandes = [for (final item in _demandes) if (item.id != id) item];
+    nexusDb.supprimer(tableDemandes, id);
+    notifyListeners();
+    return null;
+  }
+
+  /// L'admin supprime un devis refusé, expiré ou resté en brouillon.
+  String? supprimerDevis(String id) {
+    final devis = findDevis(id);
+    if (!adminView) return 'Seul un admin peut supprimer un devis.';
+    if (devis == null) return 'Devis introuvable.';
+    if (devis.contratId != null || devis.ouvrable || devis.statut == StatutDevis.accepte) {
+      return 'Seul un devis refusé, expiré ou en brouillon peut être supprimé.';
+    }
+    _devis = [for (final item in _devis) if (item.id != id) item];
+    nexusDb.supprimer(tableDevis, id);
+    notifyListeners();
+    return null;
   }
 
   /// Devis préparés par le prestataire ouvert.
@@ -308,6 +380,7 @@ class DevisContratsStore extends ChangeNotifier {
     required String lieu,
     required String distance,
     required List<OptionLigne> options,
+    int? prixBase,
   }) {
     final user = session;
     if (user == null || !user.hasRole(UserRole.client)) {
@@ -333,23 +406,22 @@ class DevisContratsStore extends ChangeNotifier {
     }
 
     final numero = _nextDemande++;
-    _demandes = [
-      ..._demandes,
-      DemandeDevis(
-        id: 'dem-$numero',
-        clientId: user.id,
-        prestataireId: provider?.id ?? 'ext-$numero',
-        prestataireNom: provider?.fullName ?? prestataireNom.trim(),
-        service: service,
-        date: jour,
-        lieu: lieu.trim(),
-        distanceKm: km,
-        prixBase: prixBaseService(service),
-        prixParKm: 1,
-        options: options,
-        statut: StatutDemande.recue,
-      ),
-    ];
+    final demande = DemandeDevis(
+      id: 'dem-$numero',
+      clientId: user.id,
+      prestataireId: provider?.id ?? 'ext-$numero',
+      prestataireNom: provider?.fullName ?? prestataireNom.trim(),
+      service: service,
+      date: jour,
+      lieu: lieu.trim(),
+      distanceKm: km,
+      prixBase: prixBase ?? prixBaseService(service),
+      prixParKm: 1,
+      options: options,
+      statut: StatutDemande.recue,
+    );
+    _demandes = [..._demandes, demande];
+    nexusDb.enregistrer(tableDemandes, ligneDemande(demande));
     notifyListeners();
     return null;
   }
@@ -422,6 +494,7 @@ class DevisContratsStore extends ChangeNotifier {
       statut: StatutDevis.envoye,
     );
     _devis = [..._devis, devis];
+    nexusDb.enregistrer(tableDevis, ligneDevis(devis));
     _replaceDemande(demande.copyWith(statut: StatutDemande.traitee));
     notifyListeners();
     return null;
@@ -454,6 +527,7 @@ class DevisContratsStore extends ChangeNotifier {
       statut: StatutContrat.attenteSignaturePrestataire,
     );
     _contrats = [..._contrats, contrat];
+    nexusDb.enregistrer(tableContrats, ligneContrat(contrat));
     _replaceDevis(
       devis.copyWith(statut: StatutDevis.accepte, contratId: contrat.id),
     );
@@ -595,20 +669,19 @@ class DevisContratsStore extends ChangeNotifier {
     if (ajout == null || ajout < 0) return 'Indiquez un supplément en dinars.';
 
     final numero = _nextModification++;
-    _modifications = [
-      ..._modifications,
-      ModificationContrat(
-        id: 'mod-$numero',
-        contratId: contrat.id,
-        prestataireId: user.id,
-        motif: motif.trim(),
-        supplement: ajout,
-        nouvellesConditions: nouvellesConditions.trim(),
-        prixActuel: contrat.prixAccepte,
-        statut: StatutModification.proposee,
-        creeeLe: DateTime.now(),
-      ),
-    ];
+    final modification = ModificationContrat(
+      id: 'mod-$numero',
+      contratId: contrat.id,
+      prestataireId: user.id,
+      motif: motif.trim(),
+      supplement: ajout,
+      nouvellesConditions: nouvellesConditions.trim(),
+      prixActuel: contrat.prixAccepte,
+      statut: StatutModification.proposee,
+      creeeLe: DateTime.now(),
+    );
+    _modifications = [..._modifications, modification];
+    nexusDb.enregistrer(tableModifications, ligneModification(modification));
     notifyListeners();
     return null;
   }
@@ -711,21 +784,25 @@ class DevisContratsStore extends ChangeNotifier {
     _demandes = [
       for (final item in _demandes) item.id == next.id ? next : item,
     ];
+    nexusDb.enregistrer(tableDemandes, ligneDemande(next));
   }
 
   void _replaceDevis(Devis next) {
     _devis = [for (final item in _devis) item.id == next.id ? next : item];
+    nexusDb.enregistrer(tableDevis, ligneDevis(next));
   }
 
   void _replaceContrat(Contrat next) {
     _contrats = [
       for (final item in _contrats) item.id == next.id ? next : item,
     ];
+    nexusDb.enregistrer(tableContrats, ligneContrat(next));
   }
 
   void _replaceModification(ModificationContrat next) {
     _modifications = [
       for (final item in _modifications) item.id == next.id ? next : item,
     ];
+    nexusDb.enregistrer(tableModifications, ligneModification(next));
   }
 }

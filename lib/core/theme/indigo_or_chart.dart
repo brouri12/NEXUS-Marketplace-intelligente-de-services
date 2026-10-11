@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_android_app/core/ui/nexus_motion.dart';
+
 /// Charte Indigo et or de NEXUS.
 ///
 /// L'indigo porte la marque, les barres et les contrats.
@@ -130,6 +132,16 @@ abstract final class IndigoOrChart {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: fond,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: TransitionNexus(),
+          TargetPlatform.iOS: TransitionNexus(),
+          TargetPlatform.linux: TransitionNexus(),
+          TargetPlatform.macOS: TransitionNexus(),
+          TargetPlatform.windows: TransitionNexus(),
+          TargetPlatform.fuchsia: TransitionNexus(),
+        },
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: primaire,
         foregroundColor: onPrimaire,
@@ -147,13 +159,62 @@ abstract final class IndigoOrChart {
         ),
       ),
       dividerTheme: const DividerThemeData(color: contourDiscret, space: 1),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: surfaceHaute,
+        surfaceTintColor: Color(0x00000000),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(24)),
+        ),
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: primaire,
+        contentTextStyle: TextStyle(color: onPrimaire),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(14)),
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: or,
           foregroundColor: onOr,
+          disabledBackgroundColor: contourDiscret,
+          disabledForegroundColor: texteMuted,
           minimumSize: const Size(64, 48),
           shape: const StadiumBorder(),
         ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primaire,
+          minimumSize: const Size(64, 48),
+          side: const BorderSide(color: contour),
+          shape: const StadiumBorder(),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: secondaire),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: or,
+        foregroundColor: onOr,
+        elevation: 2,
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        filled: true,
+        fillColor: surfaceHaute,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(14)),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: surfaceHaute,
+        selectedColor: orConteneur,
+        checkmarkColor: orTexte,
+        side: const BorderSide(color: contourDiscret),
+        shape: const StadiumBorder(),
+        labelStyle: const TextStyle(color: texte),
       ),
       textTheme: const TextTheme(
         bodyMedium: TextStyle(color: texte),

@@ -154,8 +154,52 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Services'));
     await tester.pumpAndSettle();
-    expect(find.text('Votre offre'), findsOneWidget);
-    expect(find.text('Déménagement'), findsWidgets);
+    expect(find.text('Tableau de bord'), findsOneWidget);
+    expect(find.textContaining('Déménagement'), findsWidgets);
+
+    await tester.tap(find.text('Marketplace').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mes produits'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ajouter un produit'), findsOneWidget);
+    expect(find.text('Cartons de déménagement'), findsOneWidget);
+
+    await tester.tap(find.text('Suivi'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nouveau trajet'), findsOneWidget);
+    expect(find.textContaining('TRJ-002'), findsOneWidget);
+
+    utilisateursStore.signOut();
+  });
+
+  testWidgets('Le client achete un produit sur la marketplace', (
+    WidgetTester tester,
+  ) async {
+    utilisateursStore.signOut();
+    await tester.pumpWidget(const NexusApp());
+    await tester.enterText(find.byKey(const Key('sign-in-email')), 'sara@nexus.app');
+    await tester.enterText(find.byKey(const Key('sign-in-password')), 'nexus123');
+    await tester.tap(find.widgetWithText(FilledButton, 'Se connecter'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Catalogue'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('produit-recherche')), 'râteau');
+    await tester.pump();
+    expect(find.text('Râteau à feuilles'), findsOneWidget);
+    expect(find.text('Palette bois 80 × 120'), findsNothing);
+
+    await tester.tap(find.byTooltip('Ajouter Râteau à feuilles au panier'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Panier'));
+    await tester.pumpAndSettle();
+    expect(find.text('Râteau à feuilles'), findsOneWidget);
+
+    await tester.tap(find.text('Commander'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mes commandes'));
+    await tester.pumpAndSettle();
+    expect(find.text('CMD-003'), findsOneWidget);
+    expect(find.text('CMD-001'), findsOneWidget);
 
     utilisateursStore.signOut();
   });
@@ -276,6 +320,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Utilisateurs'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Karim Saidi'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.textContaining('En attente'), findsWidgets);
 
     await tester.tap(find.text('Karim Saidi'));

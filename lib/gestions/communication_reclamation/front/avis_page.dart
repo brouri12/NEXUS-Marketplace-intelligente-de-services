@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_android_app/core/theme/indigo_or_chart.dart';
+import 'package:flutter_android_app/core/ui/nexus_ui.dart';
+import 'package:flutter_android_app/gestions/communication_reclamation/back/communication_models.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/back/communication_store.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/front/communication_widgets.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/back/contrat.dart';
@@ -231,6 +233,7 @@ class _AvisDetailPageState extends State<AvisDetailPage> {
         if (avis == null) {
           return const Scaffold(body: Center(child: Text('Avis inaccessible.')));
         }
+        final auteur = store.clientView && avis.clientId == store.session?.id;
         final peutRepondre = store.providerView &&
             avis.prestataireId == store.session?.id &&
             avis.reponse == null;
@@ -287,10 +290,75 @@ class _AvisDetailPageState extends State<AvisDetailPage> {
                   label: const Text('Répondre une fois'),
                 ),
               ],
+              if (auteur && avis.reponse == null) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => _modifier(context, avis),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Modifier mon avis'),
+                ),
+              ],
+              if (auteur || store.adminView) ...[
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  style: TextButton.styleFrom(foregroundColor: IndigoOrChart.erreur),
+                  onPressed: () {
+                    final error = store.supprimerAvis(avis.id);
+                    if (error != null) {
+                      dire(context, error);
+                      return;
+                    }
+                    Navigator.of(context).maybePop();
+                  },
+                  icon: const Icon(Icons.delete_outline),
+                  label: Text(store.adminView ? 'Retirer cet avis' : 'Supprimer mon avis'),
+                ),
+              ],
             ],
           ),
         );
       },
     );
+  }
+
+  Future<void> _modifier(BuildContext context, Avis avis) async {
+    final texte = TextEditingController(text: avis.texte);
+    var note = avis.note;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialog) => NexusDialog(
+          titre: 'Modifier mon avis',
+          icone: Icons.star_outline,
+          confirmer: 'Enregistrer',
+          onConfirmer: () => Navigator.of(context).pop(true),
+          contenu: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  for (var i = 1; i <= 5; i++)
+                    IconButton(
+                      tooltip: '$i étoiles',
+                      onPressed: () => setDialog(() => note = i),
+                      icon: Icon(
+                        i <= note ? Icons.star : Icons.star_outline,
+                        color: IndigoOrChart.or,
+                      ),
+                    ),
+                ],
+              ),
+              TextField(controller: texte, maxLines: 4),
+            ],
+          ),
+        ),
+      ),
+    );
+    final value = texte.text;
+    texte.dispose();
+    if (ok != true || !context.mounted) return;
+    final error = communicationStore.modifierAvis(avis.id, note: note, texte: value);
+    if (error != null) dire(context, error);
   }
 }

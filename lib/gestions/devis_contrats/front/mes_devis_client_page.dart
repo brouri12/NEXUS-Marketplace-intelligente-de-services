@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_android_app/gestions/devis_contrats/back/demande_devis.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/front/devis_contrats_frame.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/front/devis_contrats_routes.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/front/devis_presentation.dart';
@@ -23,10 +24,43 @@ class MesDevisClientPage extends StatelessWidget {
           );
         }
         final devis = store.devisClient();
+        final demandes = [
+          for (final demande in store.demandesClient())
+            if (demande.statut != StatutDemande.traitee) demande,
+        ];
         return DevisContratsFrame(
           title: 'Mes devis',
           child: ListView(
             children: [
+              if (demandes.isNotEmpty) ...[
+                const SectionTitre('Demandes envoyées'),
+                for (final demande in demandes)
+                  Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      leading: const Icon(Icons.outbox_outlined),
+                      title: Text('${demande.service} · ${store.nomPrestataire(demande)}'),
+                      subtitle: Text(
+                        '${formatDate(demande.date)} · ${demande.lieu}\n'
+                        '${labelStatutDemande(demande.statut)} · estimation ${formatDt(demande.total)}',
+                      ),
+                      isThreeLine: true,
+                      trailing: IconButton(
+                        tooltip: 'Retirer la demande',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () {
+                          final error = store.supprimerDemande(demande.id);
+                          if (error != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(error)),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                const SectionTitre('Devis reçus'),
+              ],
               if (devis.isEmpty)
                 const Text('Aucun devis pour le moment.')
               else

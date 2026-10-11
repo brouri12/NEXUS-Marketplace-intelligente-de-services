@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Service qu'un client peut consulter, sans le modifier.
+/// Offre publiée, telle qu'un client la lit et la demande en devis.
 class OfferedService {
   /// Crée une offre affichée dans le catalogue.
   const OfferedService({
@@ -10,9 +10,12 @@ class OfferedService {
     required this.city,
     required this.rate,
     required this.icon,
+    this.prestataireId = '',
+    this.prestations = const [],
+    this.prixBase,
   });
 
-  /// Identifiant stable.
+  /// Identifiant stable de l'offre.
   final String id;
 
   /// Nom du service.
@@ -30,59 +33,29 @@ class OfferedService {
   /// Icône du métier.
   final IconData icon;
 
+  /// Compte du prestataire.
+  final String prestataireId;
+
+  /// Compétences validées, proposées comme cases à cocher.
+  final List<String> prestations;
+
+  /// Montant du tarif, repris comme prix de base du devis.
+  final int? prixBase;
+
   /// Icône associée à un métier connu.
   static IconData iconFor(String title) {
     return switch (title) {
-      'Déménagement' => Icons.local_shipping_outlined,
+      'Déménagement' || 'Transport de meubles' || 'Garde-meuble' =>
+        Icons.local_shipping_outlined,
       'Plomberie' => Icons.plumbing_outlined,
       'Ménage' => Icons.cleaning_services_outlined,
-      'Électricité' => Icons.electrical_services_outlined,
+      'Électricité' || 'Dépannage électrique' || 'Installation électrique' =>
+        Icons.electrical_services_outlined,
       'Peinture' => Icons.format_paint_outlined,
+      'Menuiserie' => Icons.carpenter_outlined,
+      'Jardinage' => Icons.yard_outlined,
+      'Climatisation' => Icons.ac_unit_outlined,
       _ => Icons.handyman_outlined,
     };
   }
-
-  /// Catalogue de démonstration, visible par un client.
-  static const catalog = [
-    OfferedService(
-      id: 'demenagement',
-      title: 'Déménagement',
-      providerName: 'Amine Trabelsi',
-      city: 'Tunis',
-      rate: '80 TND / heure',
-      icon: Icons.local_shipping_outlined,
-    ),
-    OfferedService(
-      id: 'plomberie',
-      title: 'Plomberie',
-      providerName: 'Sami Jaziri',
-      city: 'Tunis',
-      rate: '45 TND / heure',
-      icon: Icons.plumbing_outlined,
-    ),
-    OfferedService(
-      id: 'menage',
-      title: 'Ménage',
-      providerName: 'Leila Karoui',
-      city: 'Ariana',
-      rate: '25 TND / heure',
-      icon: Icons.cleaning_services_outlined,
-    ),
-    OfferedService(
-      id: 'electricite',
-      title: 'Électricité',
-      providerName: 'Hatem Ben Youssef',
-      city: 'Tunis',
-      rate: '50 TND / heure',
-      icon: Icons.electrical_services_outlined,
-    ),
-    OfferedService(
-      id: 'peinture',
-      title: 'Peinture',
-      providerName: 'Inès Chatti',
-      city: 'La Marsa',
-      rate: '40 TND / heure',
-      icon: Icons.format_paint_outlined,
-    ),
-  ];
 }

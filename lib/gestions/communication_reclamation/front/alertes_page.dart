@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_android_app/core/theme/indigo_or_chart.dart';
+import 'package:flutter_android_app/core/ui/nexus_ui.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/back/communication_models.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/back/communication_store.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/front/avis_page.dart';
@@ -140,24 +141,14 @@ class ReglagesAlertesPage extends StatelessWidget {
     final user = store.session;
     final sensible = cle == 'Devis et contrats' || cle == 'Prestations';
     if (!valeur && user != null && sensible && store.aContratEnCours(user.id)) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Désactiver cette alerte ?'),
-          content: const Text(
-            'Vous avez un contrat en cours. Vous pourriez manquer ses mises à jour.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Garder les alertes'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Désactiver'),
-            ),
-          ],
-        ),
+      final confirmed = await confirmerNexus(
+        context,
+        titre: 'Désactiver cette alerte ?',
+        message: 'Vous avez un contrat en cours. Vous pourriez manquer ses mises à jour.',
+        annuler: 'Garder',
+        confirmer: 'Désactiver',
+        icone: Icons.notifications_off_outlined,
+        danger: true,
       );
       if (confirmed != true || !context.mounted) return;
     }

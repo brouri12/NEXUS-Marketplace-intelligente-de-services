@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_android_app/core/theme/indigo_or_chart.dart';
+import 'package:flutter_android_app/core/ui/nexus_ui.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/back/communication_models.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/back/communication_store.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/front/communication_widgets.dart';
@@ -290,26 +291,17 @@ class _ReclamationDetailPageState extends State<ReclamationDetailPage> {
     final controller = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(labelStatutReclamation(statut)),
-        content: TextField(
+      builder: (dialogContext) => NexusDialog(
+        titre: labelStatutReclamation(statut),
+        icone: Icons.gavel_outlined,
+        message: 'Le motif est transmis aux deux parties.',
+        confirmer: 'Confirmer',
+        onConfirmer: () => Navigator.pop(dialogContext, controller.text.trim()),
+        contenu: TextField(
           controller: controller,
           maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Motif obligatoire',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: 'Motif obligatoire'),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('Confirmer'),
-          ),
-        ],
       ),
     );
     controller.dispose();

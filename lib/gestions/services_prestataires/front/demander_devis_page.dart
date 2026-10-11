@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_android_app/core/ui/nexus_ui.dart';
+
 import 'package:flutter_android_app/gestions/devis_contrats/back/option_ligne.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/devis_contrats_module.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/front/devis_presentation.dart';
@@ -11,10 +13,21 @@ import 'package:flutter_android_app/gestions/utilisateurs/utilisateurs_module.da
 /// Demande de devis : le client coche ce que ce prestataire propose.
 class DemanderDevisPage extends StatefulWidget {
   /// Ouvre la demande pour [service].
-  const DemanderDevisPage({super.key, required this.service});
+  const DemanderDevisPage({
+    super.key,
+    required this.service,
+    this.lieuInitial = '',
+    this.onEnvoyee,
+  });
 
   /// Offre choisie dans le catalogue.
   final OfferedService service;
+
+  /// Lieu repris du besoin décrit sur la marketplace.
+  final String lieuInitial;
+
+  /// Appelé une fois la demande enregistrée.
+  final VoidCallback? onEnvoyee;
 
   @override
   State<DemanderDevisPage> createState() => _DemanderDevisPageState();
@@ -34,6 +47,7 @@ class _DemanderDevisPageState extends State<DemanderDevisPage> {
   void initState() {
     super.initState();
     _date.text = formatDate(DateTime.now());
+    _lieu.text = widget.lieuInitial;
   }
 
   @override
@@ -46,6 +60,7 @@ class _DemanderDevisPageState extends State<DemanderDevisPage> {
   }
 
   List<String> get _sousServices {
+    if (widget.service.prestations.isNotEmpty) return widget.service.prestations;
     for (final account in utilisateursStore.accounts) {
       final profile = account.providerProfile;
       if (account.fullName == widget.service.providerName && profile != null) {
@@ -70,6 +85,13 @@ class _DemanderDevisPageState extends State<DemanderDevisPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Demander un devis')),
+      bottomNavigationBar: _envoyee
+          ? null
+          : BarreAction(
+              label: 'Envoyer la demande',
+              icone: Icons.send_outlined,
+              onPressed: _envoyer,
+            ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         children: [
@@ -85,7 +107,7 @@ class _DemanderDevisPageState extends State<DemanderDevisPage> {
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Retour aux services'),
+              child: const Text('Retour'),
             ),
           ] else ...[
             Text('Ce que ${service.providerName} propose', style: Theme.of(context).textTheme.titleMedium),
@@ -147,10 +169,6 @@ class _DemanderDevisPageState extends State<DemanderDevisPage> {
               for (final label in retenus) InfoLigne(label, 'Oui'),
             const SizedBox(height: 16),
             FormErrorText(message: _error),
-            FilledButton(
-              onPressed: _envoyer,
-              child: const Text('Envoyer la demande'),
-            ),
           ],
         ],
       ),
@@ -173,10 +191,12 @@ class _DemanderDevisPageState extends State<DemanderDevisPage> {
       lieu: _lieu.text,
       distance: _distance.text,
       options: options,
+      prixBase: widget.service.prixBase,
     );
     setState(() {
       _error = error ?? '';
       _envoyee = error == null;
     });
+    if (error == null) widget.onEnvoyee?.call();
   }
 }

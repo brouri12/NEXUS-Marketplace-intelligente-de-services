@@ -5,6 +5,7 @@ import 'package:flutter_android_app/gestions/devis_contrats/back/modification_co
 import 'package:flutter_android_app/gestions/devis_contrats/front/devis_contrats_frame.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/front/devis_contrats_routes.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/front/devis_presentation.dart';
+import 'package:flutter_android_app/gestions/logistique/front/trajet_du_contrat.dart';
 
 /// Lecture d'un contrat par l'admin, signatures et modifications comprises.
 class DetailContratAdminPage extends StatelessWidget {
@@ -66,6 +67,7 @@ class DetailContratAdminPage extends StatelessWidget {
                 icon: const Icon(Icons.forum_outlined),
                 label: const Text('Voir les échanges'),
               ),
+              TrajetDuContrat(contrat: contrat),
               const SectionTitre('CONDITIONS'),
               Text(contrat.conditions.isEmpty ? '—' : contrat.conditions),
               const SectionTitre('SIGNATURES'),

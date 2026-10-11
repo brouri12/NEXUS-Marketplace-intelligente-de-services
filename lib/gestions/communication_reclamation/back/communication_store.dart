@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:flutter_android_app/core/db/nexus_database.dart';
 import 'package:flutter_android_app/gestions/communication_reclamation/back/communication_models.dart';
+import 'package:flutter_android_app/gestions/communication_reclamation/back/communication_table.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/back/contrat.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/back/devis.dart';
 import 'package:flutter_android_app/gestions/devis_contrats/devis_contrats_module.dart';
@@ -29,6 +31,47 @@ class CommunicationStore extends ChangeNotifier {
   var _nextMessage = 1;
   var _nextAvis = 1;
   var _nextReclamation = 25;
+
+  /// Recharge messages, avis, réclamations et préférences depuis SQLite.
+  Future<void> charger() async {
+    final messages = await nexusDb.charger(tableMessages, _messages.map(ligneMessage));
+    final avis = await nexusDb.charger(tableAvis, _avis.map(ligneAvis));
+    final reclamations = await nexusDb.charger(
+      tableReclamations,
+      _reclamations.map(ligneReclamation),
+    );
+    final preferences = await nexusDb.charger(tablePreferences, const []);
+    final lues = await nexusDb.charger(tableLues, const []);
+    if (messages != null) {
+      _messages
+        ..clear()
+        ..addAll(messages.map(messageDepuis));
+    }
+    if (avis != null) {
+      _avis
+        ..clear()
+        ..addAll(avis.map(avisDepuis));
+    }
+    if (reclamations != null) {
+      _reclamations
+        ..clear()
+        ..addAll(reclamations.map(reclamationDepuis));
+    }
+    for (final ligne in preferences ?? const <Map<String, Object?>>[]) {
+      _preferences[ligne['id']! as String] = preferencesDepuis(ligne);
+    }
+    for (final ligne in lues ?? const <Map<String, Object?>>[]) {
+      _lues.putIfAbsent(ligne['compte_id']! as String, () => {}).add(ligne['cle']! as String);
+    }
+    _nextMessage = prochainNumero(_messages.map((item) => item.id), 'm-', _nextMessage);
+    _nextAvis = prochainNumero(_avis.map((item) => item.id), 'av-', _nextAvis);
+    _nextReclamation = prochainNumero(
+      _reclamations.map((item) => item.id),
+      'rec-',
+      _nextReclamation,
+    );
+    notifyListeners();
+  }
 
   /// Compte ouvert.
   UserAccount? get session => utilisateursStore.current;
@@ -68,7 +111,7 @@ class CommunicationStore extends ChangeNotifier {
     final id = session?.id;
     if (id == null) return;
     final actuelles = _preferences[id] ?? const PreferencesAlertes();
-    _preferences[id] = switch (cle) {
+    final suivantes = switch (cle) {
       'Devis et contrats' => actuelles.copyWith(devisEtContrats: valeur),
       'Messages' => actuelles.copyWith(messages: valeur),
       'Prestations' => actuelles.copyWith(prestations: valeur),
@@ -76,6 +119,8 @@ class CommunicationStore extends ChangeNotifier {
       'Avis' => actuelles.copyWith(avis: valeur),
       _ => actuelles,
     };
+    _preferences[id] = suivantes;
+    nexusDb.enregistrer(tablePreferences, lignePreferences(id, suivantes));
     notifyListeners();
   }
 
@@ -111,12 +156,11 @@ class CommunicationStore extends ChangeNotifier {
   void marquerDossierLu(String dossierId) {
     final id = session?.id;
     if (id == null) return;
-    final lus = _lues.putIfAbsent(id, () => {});
     var changed = false;
     for (final message in messagesDe(dossierId)) {
-      changed = lus.add('msg:${message.id}') || changed;
+      changed = _marquerLu(id, 'msg:${message.id}') || changed;
     }
-    changed = lus.add('dossier:$dossierId') || changed;
+    changed = _marquerLu(id, 'dossier:$dossierId') || changed;
     if (changed) notifyListeners();
   }
 
@@ -129,7 +173,7 @@ class CommunicationStore extends ChangeNotifier {
     if (dossier.lectureSeule || adminView) return 'Cette conversation est en lecture seule.';
     final value = texte.trim();
     if (!photo && value.isEmpty) return 'Écrivez un message.';
-    _messages.add(
+    _ajouterMessage(
       MessageFil(
         id: 'm-${_nextMessage++}',
         filId: dossierId,
@@ -235,7 +279,8 @@ class CommunicationStore extends ChangeNotifier {
       pieces: pieces,
     );
     _reclamations.add(item);
-    _messages.add(
+    nexusDb.enregistrer(tableReclamations, ligneReclamation(item));
+    _ajouterMessage(
       MessageFil(
         id: 'm-${_nextMessage++}',
         filId: _filReclamation(item.id),
@@ -257,7 +302,7 @@ class CommunicationStore extends ChangeNotifier {
     if (!reclamationOuverte(item.statut)) return 'Ce dossier est clos.';
     final value = texte.trim();
     if (value.isEmpty) return 'Écrivez un message.';
-    _messages.add(
+    _ajouterMessage(
       MessageFil(
         id: 'm-${_nextMessage++}',
         filId: _filReclamation(item.id),
@@ -283,11 +328,13 @@ class CommunicationStore extends ChangeNotifier {
     final raison = motif.trim();
     if (raison.isEmpty) return 'Un motif est obligatoire.';
     final index = _reclamations.indexWhere((value) => value.id == item.id);
-    _reclamations[index] = item.copyWith(
+    final decidee = item.copyWith(
       statut: statut,
       decisionMotif: raison,
       decisionPar: user.id,
     );
+    _reclamations[index] = decidee;
+    nexusDb.enregistrer(tableReclamations, ligneReclamation(decidee));
     notifyListeners();
     return null;
   }
@@ -315,6 +362,24 @@ class CommunicationStore extends ChangeNotifier {
         if (avis.clientId == user.id || (providerView && avis.prestataireId == user.id))
           avis,
     ];
+  }
+
+  /// Avis publiés sur [prestataireId], du plus récent au plus ancien.
+  ///
+  /// Ils sont publics : la fiche du prestataire les montre à tout client.
+  List<Avis> avisPublicsDe(String prestataireId) {
+    final items = [
+      for (final avis in _avis)
+        if (avis.prestataireId == prestataireId) avis,
+    ]..sort((a, b) => b.publieLe.compareTo(a.publieLe));
+    return items;
+  }
+
+  /// Note moyenne de [prestataireId], ou `null` sans avis.
+  double? noteMoyenne(String prestataireId) {
+    final items = avisPublicsDe(prestataireId);
+    if (items.isEmpty) return null;
+    return items.fold<int>(0, (somme, avis) => somme + avis.note) / items.length;
   }
 
   /// Avis du contrat [contratId], ou `null`.
@@ -362,8 +427,48 @@ class CommunicationStore extends ChangeNotifier {
       publieLe: DateTime.now(),
     );
     _avis.add(avis);
+    nexusDb.enregistrer(tableAvis, ligneAvis(avis));
     notifyListeners();
     return avis.id;
+  }
+
+  /// Le client corrige son avis tant que le prestataire n'a pas répondu.
+  String? modifierAvis(String avisId, {required int note, required String texte}) {
+    final user = session;
+    final avis = findAvis(avisId);
+    if (user == null || avis == null || !clientView || avis.clientId != user.id) {
+      return 'Seul l\'auteur peut modifier cet avis.';
+    }
+    if (avis.reponse != null) return 'Le prestataire a déjà répondu.';
+    if (note < 1 || note > 5) return 'Choisissez une note de 1 à 5.';
+    final value = texte.trim();
+    if (value.isEmpty) return 'Décrivez votre expérience.';
+    final next = Avis(
+      id: avis.id,
+      contratId: avis.contratId,
+      clientId: avis.clientId,
+      prestataireId: avis.prestataireId,
+      note: note,
+      texte: value,
+      publieLe: avis.publieLe,
+    );
+    _avis[_avis.indexWhere((item) => item.id == avis.id)] = next;
+    nexusDb.enregistrer(tableAvis, ligneAvis(next));
+    notifyListeners();
+    return null;
+  }
+
+  /// L'auteur retire son avis, ou l'admin le modère.
+  String? supprimerAvis(String avisId) {
+    final user = session;
+    final avis = findAvis(avisId);
+    if (user == null || avis == null) return 'Avis introuvable.';
+    final auteur = clientView && avis.clientId == user.id;
+    if (!auteur && !adminView) return 'Vous ne pouvez pas supprimer cet avis.';
+    _avis.removeWhere((item) => item.id == avis.id);
+    nexusDb.supprimer(tableAvis, avis.id);
+    notifyListeners();
+    return null;
   }
 
   /// Le prestataire répond une seule fois.
@@ -376,7 +481,9 @@ class CommunicationStore extends ChangeNotifier {
     final value = texte.trim();
     if (value.isEmpty) return 'Écrivez une réponse.';
     final index = _avis.indexWhere((item) => item.id == avis.id);
-    _avis[index] = avis.copyWith(reponse: value, reponseLe: DateTime.now());
+    final repondu = avis.copyWith(reponse: value, reponseLe: DateTime.now());
+    _avis[index] = repondu;
+    nexusDb.enregistrer(tableAvis, ligneAvis(repondu));
     notifyListeners();
     return null;
   }
@@ -397,19 +504,28 @@ class CommunicationStore extends ChangeNotifier {
   void marquerAlerteLue(String id) {
     final userId = session?.id;
     if (userId == null) return;
-    final changed = _lues.putIfAbsent(userId, () => {}).add(id);
-    if (changed) notifyListeners();
+    if (_marquerLu(userId, id)) notifyListeners();
   }
 
   /// Marque toutes les alertes visibles comme lues.
   void toutMarquerLu() {
     final userId = session?.id;
     if (userId == null) return;
-    final lus = _lues.putIfAbsent(userId, () => {});
     for (final alerte in alertes()) {
-      lus.add(alerte.id);
+      _marquerLu(userId, alerte.id);
     }
     notifyListeners();
+  }
+
+  bool _marquerLu(String userId, String cle) {
+    final ajoute = _lues.putIfAbsent(userId, () => {}).add(cle);
+    if (ajoute) nexusDb.enregistrer(tableLues, ligneLue(userId, cle));
+    return ajoute;
+  }
+
+  void _ajouterMessage(MessageFil message) {
+    _messages.add(message);
+    nexusDb.enregistrer(tableMessages, ligneMessage(message));
   }
 
   void _seed() {
